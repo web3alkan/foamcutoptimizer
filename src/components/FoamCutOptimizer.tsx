@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Calculator, Plus, Trash2, Package, Scissors, Info, Grid3X3, Sparkles, TrendingUp, FileText, Download, Edit3, Save, X } from 'lucide-react'
+import { Calculator, Plus, Trash2, Package, Scissors, Info, Grid3X3, Sparkles, FileText, Download, Edit3, Save, X, Clock, Zap, Brain } from 'lucide-react'
 import FoamPiece3D from './FoamPiece3D'
 import FoamCutSlice2D from './FoamCutSlice2D'
 import OptimizationEngine from '../utils/optimizationEngine'
 import { AdvancedOptimizationEngine } from '../utils/advancedOptimizationEngine'
+import { GuillotineCuttingEngine } from '../utils/guillotineCuttingEngine'
 import AlgorithmDashboard from './AlgorithmDashboard'
+import CuttingInstructions from './CuttingInstructions'
 
 interface FoamPiece {
   id: string
@@ -38,10 +40,19 @@ interface OptimizationResult {
       rotated?: boolean
     }>
     utilization: number
+    cuttingPattern?: {
+      horizontalCuts: number[]
+      verticalCuts: number[]
+      totalCuts: number
+    }
   }>
   totalWaste: number
   totalCost: number
   efficiency: number
+  cuttingInstructions?: any
+  algorithmData?: any
+  algorithmComparison?: any
+  hybridAnalysis?: any
 }
 
 export default function FoamCutOptimizer() {
@@ -129,6 +140,14 @@ export default function FoamCutOptimizer() {
     height: '',
     quantity: '1',
     label: 'Sünger Blok'
+  })
+
+  const [optimizationProgress, setOptimizationProgress] = useState({
+    currentAlgorithm: '',
+    progress: 0,
+    stage: '',
+    completed: 0,
+    total: 0
   })
 
   // Tek parça için maksimum adet hesaplama
@@ -277,68 +296,174 @@ export default function FoamCutOptimizer() {
     }
   }, [showEfficiencyWarning])
 
-  // Optimizasyon hesaplama
+  // Optimizasyon hesaplama (otomatik maksimizasyon ile)
   const calculateOptimization = async () => {
     if (pieces.length === 0) return
     
     setIsCalculating(true)
+    setShowEfficiencyWarning('Parçalar maksimize ediliyor ve optimize ediliyor...')
+    
     try {
-      // CM'yi MM'ye çevir (optimizasyon motoru MM kullanıyor)
-      const piecesInMM = pieces.map(p => ({
-        ...p,
-        length: p.length * 10,
-        width: p.width * 10,
-        height: p.height * 10
-      }))
+      // Önce otomatik maksimizasyon yap
+      await maximizeAllPieces()
       
-      const stocksInMM = stockFoams.map(s => ({
-        ...s,
-        length: s.length * 10,
-        width: s.width * 10,
-        height: s.height * 10
-      }))
-      
-      const engine = new OptimizationEngine()
-      const result = await engine.optimize(piecesInMM, stocksInMM)
-      setOptimizationResult(result)
+      // Bir sonraki render cycle'da optimize et
+      setTimeout(async () => {
+        try {
+          // CM'yi MM'ye çevir (optimizasyon motoru MM kullanıyor)
+          const piecesInMM = pieces.map(p => ({
+            ...p,
+            length: p.length * 10,
+            width: p.width * 10,
+            height: p.height * 10
+          }))
+          
+          const stocksInMM = stockFoams.map(s => ({
+            ...s,
+            length: s.length * 10,
+            width: s.width * 10,
+            height: s.height * 10
+          }))
+          
+          const engine = new OptimizationEngine()
+          const result = await engine.optimize(piecesInMM, stocksInMM)
+          setOptimizationResult(result)
+          setShowEfficiencyWarning(`✅ Optimizasyon tamamlandı! Verimlilik: ${result.efficiency.toFixed(1)}%`)
+        } catch (error) {
+          console.error('Optimizasyon hatası:', error)
+          setShowEfficiencyWarning('Optimizasyon sırasında hata oluştu: ' + (error as Error).message)
+        } finally {
+          setIsCalculating(false)
+        }
+      }, 500)
     } catch (error) {
-      console.error('Optimizasyon hatası:', error)
-    } finally {
+      console.error('Maksimizasyon hatası:', error)
+      setShowEfficiencyWarning('Maksimizasyon sırasında hata oluştu: ' + (error as Error).message)
       setIsCalculating(false)
     }
   }
 
-  // Gelişmiş optimizasyon hesaplama
+  // Gerçek makine optimizasyonu (otomatik maksimizasyon ile)
+  const calculateRealisticCutting = async () => {
+    if (pieces.length === 0) return
+    
+    setIsCalculating(true)
+    setShowEfficiencyWarning('🔪 Parçalar maksimize ediliyor ve gerçek makine kısıtlamalarıyla optimize ediliyor...')
+    
+    try {
+      // Önce otomatik maksimizasyon yap
+      await maximizeAllPieces()
+      
+      // Bir sonraki render cycle'da optimize et
+      setTimeout(async () => {
+        try {
+          const engine = new GuillotineCuttingEngine(pieces, stockFoams)
+          const result = await engine.optimize()
+          
+          setOptimizationResult(result)
+          setShowEfficiencyWarning(`🔪 Gerçek Kesim: ${result.efficiency.toFixed(1)}% verimlilik, ${result.algorithmData.totalCuts} kesim`)
+        } catch (error) {
+          console.error('Gerçek kesim optimizasyon hatası:', error)
+          setShowEfficiencyWarning('Gerçek kesim optimizasyonu sırasında hata oluştu: ' + (error as Error).message)
+        } finally {
+          setIsCalculating(false)
+        }
+      }, 500)
+    } catch (error) {
+      console.error('Maksimizasyon hatası:', error)
+      setShowEfficiencyWarning('Maksimizasyon sırasında hata oluştu: ' + (error as Error).message)
+      setIsCalculating(false)
+    }
+  }
+
+  // Gelişmiş optimizasyon hesaplama (otomatik maksimizasyon ile)
   const calculateAdvancedOptimization = async (mode: 'multi' | 'hybrid' | 'adaptive' = 'adaptive') => {
     if (pieces.length === 0) return
     
     setIsCalculating(true)
-    setShowEfficiencyWarning(`🚀 Gelişmiş optimizasyon (${mode}) başlıyor...`)
+    setOptimizationProgress({
+      currentAlgorithm: '',
+      progress: 0,
+      stage: 'Parçalar maksimize ediliyor...',
+      completed: 0,
+      total: mode === 'multi' ? 3 : mode === 'hybrid' ? 3 : 1
+    })
     
     try {
-      const engine = new AdvancedOptimizationEngine(pieces, stockFoams)
-      let result
+      // Önce otomatik maksimizasyon yap
+      await maximizeAllPieces()
       
-      switch (mode) {
-        case 'multi':
-          result = await engine.optimizeWithMultipleAlgorithms(['basic', 'genetic', 'annealing'])
-          setShowEfficiencyWarning(`🏆 Multi-Algorithm: En iyi = ${result.algorithmComparison.bestAlgorithm}`)
-          break
-        case 'hybrid':
-          result = await engine.optimizeWithHybridApproach()
-          setShowEfficiencyWarning(`🔬 Hybrid: ${result.hybridAnalysis.improvement.toFixed(1)}% iyileştirme`)
-          break
-        case 'adaptive':
-          result = await engine.optimizeWithAdaptiveParameters()
-          setShowEfficiencyWarning(`🎯 Adaptive: Otomatik algoritma seçimi tamamlandı`)
-          break
-      }
-      
-      setOptimizationResult(result)
+      // Bir sonraki render cycle'da optimize et
+      setTimeout(async () => {
+        try {
+          setOptimizationProgress(prev => ({ ...prev, stage: 'Gelişmiş optimizasyon başlıyor...' }))
+          
+          // Progress callback function
+          const progressCallback = (progressData: any) => {
+            setOptimizationProgress(prev => ({
+              ...prev,
+              currentAlgorithm: progressData.algorithm,
+              progress: progressData.progress,
+              stage: progressData.stage
+            }))
+          }
+          
+          const engine = new AdvancedOptimizationEngine(pieces, stockFoams, progressCallback)
+          let result
+          
+          switch (mode) {
+            case 'multi':
+              setOptimizationProgress(prev => ({ ...prev, stage: 'Multi-Algorithm Analysis', total: 3 }))
+              result = await engine.optimizeWithMultipleAlgorithms(['basic', 'genetic', 'annealing'])
+              setShowEfficiencyWarning(`🏆 Multi-Algorithm: En iyi = ${result.algorithmComparison.bestAlgorithm}`)
+              break
+              
+            case 'hybrid':
+              setOptimizationProgress(prev => ({ ...prev, stage: 'Hybrid 3-Stage Process', total: 3 }))
+              result = await engine.optimizeWithHybridApproach()
+              setShowEfficiencyWarning(`🔬 Hybrid: ${result.hybridAnalysis.improvement.toFixed(1)}% iyileştirme`)
+              break
+              
+            case 'adaptive':
+              setOptimizationProgress(prev => ({
+                ...prev,
+                currentAlgorithm: '🎯 Akıllı Seçim',
+                progress: 50,
+                completed: 0,
+                stage: 'Problem analiz ediliyor...'
+              }))
+              await new Promise(resolve => setTimeout(resolve, 300))
+              
+              setOptimizationProgress(prev => ({
+                ...prev,
+                progress: 100,
+                completed: 1,
+                stage: 'En uygun algoritma çalıştırılıyor...'
+              }))
+              
+              result = await engine.optimizeWithAdaptiveParameters()
+              setShowEfficiencyWarning(`🎯 Adaptive: Otomatik algoritma seçimi tamamlandı`)
+              break
+          }
+          
+          setOptimizationResult(result)
+        } catch (error) {
+          console.error('Gelişmiş optimizasyon hatası:', error)
+          setShowEfficiencyWarning('Gelişmiş optimizasyon sırasında hata oluştu: ' + (error as Error).message)
+        } finally {
+          setIsCalculating(false)
+          setOptimizationProgress({
+            currentAlgorithm: '',
+            progress: 0,
+            stage: '',
+            completed: 0,
+            total: 0
+          })
+        }
+      }, 500)
     } catch (error) {
-      console.error('Gelişmiş optimizasyon hatası:', error)
-      setShowEfficiencyWarning('Gelişmiş optimizasyon sırasında hata oluştu: ' + (error as Error).message)
-    } finally {
+      console.error('Maksimizasyon hatası:', error)
+      setShowEfficiencyWarning('Maksimizasyon sırasında hata oluştu: ' + (error as Error).message)
       setIsCalculating(false)
     }
   }
@@ -673,7 +798,7 @@ export default function FoamCutOptimizer() {
             </div>
             <div class="summary-item">
               <div class="summary-value">${reportContent.summary.waste}</div>
-              <div class="summary-label">İsraf</div>
+              <div class="summary-label">Fire</div>
             </div>
             <div class="summary-item">
               <div class="summary-value">${reportContent.summary.blocksUsed}</div>
@@ -782,7 +907,7 @@ export default function FoamCutOptimizer() {
             <li>Verimlilik yüzdesi kullanılan hacmin toplam hacme oranını gösterir.</li>
             <li>Döndürülmüş parçalar farklı yönelimde yerleştirilmiştir.</li>
             <li>2D kesit görünümleri üretim için kullanılabilir.</li>
-            <li>Minimum israf hedefi ile optimize edilmiştir.</li>
+            <li>Minimum fire hedefi ile optimize edilmiştir.</li>
           </ul>
         </div>
       </body>
@@ -833,7 +958,7 @@ export default function FoamCutOptimizer() {
       const totalWasteVolume = wasteAnalysis.reduce((sum, block) => sum + block!.wasteVolume, 0)
       
       if (totalWasteVolume < 1000) { // 1000 cm³ = 1L altındaysa
-        setShowEfficiencyWarning('İsraf miktarı çok düşük. Ekstra optimizasyon gerekmiyor!')
+        setShowEfficiencyWarning('Fire miktarı çok düşük. Ekstra optimizasyon gerekmiyor!')
         setIsCalculating(false)
         return
       }
@@ -845,7 +970,7 @@ export default function FoamCutOptimizer() {
         return volume < smallestVolume ? piece : smallest
       })
 
-      // İsraf parçalarından ne kadar küçük parça çıkabileceğini hesapla
+      // Fire parçalarından ne kadar küçük parça çıkabileceğini hesapla
       let additionalPieces = 0
       wasteAnalysis.forEach(block => {
         if (!block) return
@@ -864,74 +989,91 @@ export default function FoamCutOptimizer() {
         )
 
         setPieces(updatedPieces)
-        setShowEfficiencyWarning(`İsraf optimize edildi! ${additionalPieces} adet "${smallestPiece.label}" daha eklenebilir. Tekrar optimizasyon yapın.`)
+        setShowEfficiencyWarning(`Fire optimize edildi! ${additionalPieces} adet "${smallestPiece.label}" daha eklenebilir. Tekrar optimizasyon yapın.`)
       } else {
-        setShowEfficiencyWarning('İsraf parçaları mevcut parça boyutlarına uygun değil. Daha küçük parçalar deneyin.')
+        setShowEfficiencyWarning('Fire parçaları mevcut parça boyutlarına uygun değil. Daha küçük parçalar deneyin.')
       }
 
     } catch (error) {
-      console.error('İsraf optimizasyon hatası:', error)
-      setShowEfficiencyWarning('İsraf optimizasyonu sırasında hata oluştu.')
+      console.error('Fire optimizasyon hatası:', error)
+      setShowEfficiencyWarning('Fire optimizasyonu sırasında hata oluştu.')
     } finally {
       setIsCalculating(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Minimalist Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Modern Header */}
+      <div className="bg-white/80 backdrop-blur-lg border-b border-white/20 shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Sünger Kesim Optimizasyonu</h1>
-                <p className="text-gray-600">3D optimizasyon ile minimum israf</p>
+              <div className="text-center sm:text-left">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 bg-clip-text text-transparent">
+                  Sünger Kesim Optimizasyonu
+                </h1>
+                <p className="text-sm sm:text-base text-slate-600">3D optimizasyon ile minimum israf</p>
               </div>
             </div>
-            <Sparkles className="w-6 h-6 text-blue-600" />
+            <div className="flex items-center space-x-2">
+              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                v2.0 Pro
+              </div>
+              <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Efficiency Warning */}
+      {/* Efficiency Warning - Mobile Optimized */}
       {showEfficiencyWarning && (
-        <div className="mx-6 mt-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <Info className="w-5 h-5 text-amber-600 mr-3" />
-              <p className="text-amber-800 font-medium">{showEfficiencyWarning}</p>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Info className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm sm:text-base text-amber-800 font-medium break-words">
+                  {showEfficiencyWarning}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      {/* Main Content */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* Mobile-First Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           
-          {/* Left Panel - Minimalist Input */}
-          <div className="space-y-6">
+          {/* Left Panel - Input Section */}
+          <div className="lg:col-span-5 space-y-6">
             
-            {/* Stock Materials */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="border-b border-gray-100 px-6 py-4">
-                <h2 className="font-semibold text-gray-900 flex items-center">
-                  <Package className="w-5 h-5 text-orange-500 mr-2" />
+            {/* Stock Materials Card */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/20 shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 sm:px-6 py-4">
+                <h2 className="font-bold text-white flex items-center text-lg">
+                  <Package className="w-5 h-5 mr-2" />
                   Ham Malzeme
                 </h2>
+                <p className="text-orange-100 text-sm mt-1">Kesilecek sünger blokları</p>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-4 gap-3 mb-4">
+              <div className="p-4 sm:p-6">
+                {/* Mobile-Friendly Input Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   <input
                     type="number"
                     step="0.1"
                     placeholder="Uzunluk"
                     value={newStock.length}
                     onChange={(e) => setNewStock({ ...newStock, length: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all duration-200"
                   />
                   <input
                     type="number"
@@ -939,7 +1081,7 @@ export default function FoamCutOptimizer() {
                     placeholder="Genişlik"
                     value={newStock.width}
                     onChange={(e) => setNewStock({ ...newStock, width: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all duration-200"
                   />
                   <input
                     type="number"
@@ -947,43 +1089,44 @@ export default function FoamCutOptimizer() {
                     placeholder="Kalınlık"
                     value={newStock.height}
                     onChange={(e) => setNewStock({ ...newStock, height: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all duration-200"
                   />
                   <input
                     type="number"
                     placeholder="Adet"
                     value={newStock.quantity}
                     onChange={(e) => setNewStock({ ...newStock, quantity: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all duration-200"
                   />
                 </div>
                 <input
                   type="text"
-                  placeholder="Malzeme adı"
+                  placeholder="Malzeme adı (örn: Büyük Sünger Blok)"
                   value={newStock.label}
                   onChange={(e) => setNewStock({ ...newStock, label: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-4"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-4 text-sm transition-all duration-200"
                 />
                 <button
                   onClick={addStock}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center font-medium"
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-3 rounded-xl flex items-center justify-center font-medium text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Malzeme Ekle
                 </button>
 
-                <div className="mt-4 space-y-2">
+                {/* Stock List */}
+                <div className="mt-4 space-y-3 max-h-48 overflow-y-auto">
                   {stockFoams.map((stock) => (
-                    <div key={stock.id} className="flex justify-between items-center bg-orange-50 border border-orange-100 p-3 rounded-lg">
-                      <div>
-                        <div className="font-medium text-gray-900">{stock.label}</div>
+                    <div key={stock.id} className="flex justify-between items-center bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 p-3 rounded-xl transition-all duration-200 hover:shadow-md">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">{stock.label}</div>
                         <div className="text-sm text-gray-600">
                           {stock.length}×{stock.width}×{stock.height}cm × {stock.quantity} adet
                         </div>
                       </div>
                       <button
                         onClick={() => removeStock(stock.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
+                        className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-lg transition-all duration-200"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -993,42 +1136,27 @@ export default function FoamCutOptimizer() {
               </div>
             </div>
 
-            {/* Cut Pieces */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-                <h2 className="font-semibold text-gray-900 flex items-center">
-                  <Scissors className="w-5 h-5 text-blue-500 mr-2" />
-                  Kesilecek Parçalar
-                </h2>
-                {pieces.length > 0 && (
-                  <button
-                    onClick={maximizeAllPieces}
-                    disabled={isCalculating}
-                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-4 py-2 rounded-lg flex items-center text-sm font-medium"
-                  >
-                    {isCalculating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Hesaplanıyor...
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="w-4 h-4 mr-2" />
-                        MAKSİMİZE ET
-                      </>
-                    )}
-                  </button>
-                )}
+            {/* Cut Pieces Card */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/20 shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-4 sm:px-6 py-4">
+                <div>
+                  <h2 className="font-bold text-white flex items-center text-lg">
+                    <Scissors className="w-5 h-5 mr-2" />
+                    Kesilecek Parçalar
+                  </h2>
+                  <p className="text-blue-100 text-sm mt-1">Üretilecek parça listesi</p>
+                </div>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="p-4 sm:p-6">
+                {/* Mobile-Optimized Input */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   <input
                     type="number"
                     step="0.1"
                     placeholder="Uzunluk"
                     value={newPiece.length}
                     onChange={(e) => setNewPiece({ ...newPiece, length: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200"
                   />
                   <input
                     type="number"
@@ -1036,7 +1164,7 @@ export default function FoamCutOptimizer() {
                     placeholder="Genişlik"
                     value={newPiece.width}
                     onChange={(e) => setNewPiece({ ...newPiece, width: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200"
                   />
                   <input
                     type="number"
@@ -1044,7 +1172,7 @@ export default function FoamCutOptimizer() {
                     placeholder="Kalınlık"
                     value={newPiece.height}
                     onChange={(e) => setNewPiece({ ...newPiece, height: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200"
                   />
                 </div>
                 
@@ -1054,11 +1182,11 @@ export default function FoamCutOptimizer() {
                     placeholder="Adet"
                     value={newPiece.quantity}
                     onChange={(e) => setNewPiece({ ...newPiece, quantity: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200"
                   />
                   <button
                     onClick={calculateMaxQuantity}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-3 py-3 rounded-xl font-medium text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                     title="Bu parça için maksimum adet hesapla"
                   >
                     MAX ADET
@@ -1067,33 +1195,34 @@ export default function FoamCutOptimizer() {
 
                 <input
                   type="text"
-                  placeholder="Parça adı"
+                  placeholder="Parça adı (örn: Koltuk Yastığı)"
                   value={newPiece.label}
                   onChange={(e) => setNewPiece({ ...newPiece, label: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4 text-sm transition-all duration-200"
                 />
                 <button
                   onClick={addPiece}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center font-medium"
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-3 rounded-xl flex items-center justify-center font-medium text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Parça Ekle
                 </button>
 
-                <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+                {/* Pieces List - Mobile Optimized */}
+                <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
                   {pieces.map((piece) => (
-                    <div key={piece.id} className="bg-blue-50 border border-blue-100 p-3 rounded-lg">
+                    <div key={piece.id} className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 p-3 rounded-xl transition-all duration-200 hover:shadow-md">
                       {editingPiece === piece.id ? (
-                        // Edit Mode
+                        // Edit Mode - Mobile Optimized
                         <div className="space-y-3">
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <input
                               type="number"
                               step="0.1"
                               placeholder="Uzunluk"
                               value={editForm.length}
                               onChange={(e) => setEditForm({ ...editForm, length: e.target.value })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                             <input
                               type="number"
@@ -1101,7 +1230,7 @@ export default function FoamCutOptimizer() {
                               placeholder="Genişlik"
                               value={editForm.width}
                               onChange={(e) => setEditForm({ ...editForm, width: e.target.value })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                             <input
                               type="number"
@@ -1109,7 +1238,7 @@ export default function FoamCutOptimizer() {
                               placeholder="Kalınlık"
                               value={editForm.height}
                               onChange={(e) => setEditForm({ ...editForm, height: e.target.value })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
@@ -1118,27 +1247,27 @@ export default function FoamCutOptimizer() {
                               placeholder="Adet"
                               value={editForm.quantity}
                               onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                             <input
                               type="text"
                               placeholder="Parça adı"
                               value={editForm.label}
                               onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                           </div>
                           <div className="flex gap-2">
                             <button
                               onClick={saveEditPiece}
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                              className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-all duration-200"
                             >
                               <Save className="w-3 h-3 mr-1" />
                               Kaydet
                             </button>
                             <button
                               onClick={cancelEdit}
-                              className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-all duration-200"
                             >
                               <X className="w-3 h-3 mr-1" />
                               İptal
@@ -1146,25 +1275,25 @@ export default function FoamCutOptimizer() {
                           </div>
                         </div>
                       ) : (
-                        // View Mode
+                        // View Mode - Mobile Optimized
                         <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium text-gray-900">{piece.label}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{piece.label}</div>
                             <div className="text-sm text-gray-600">
                               {piece.length}×{piece.width}×{piece.height}cm × {piece.quantity} adet
                             </div>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 ml-3">
                             <button
                               onClick={() => startEditPiece(piece)}
-                              className="text-blue-500 hover:text-blue-700 p-1"
+                              className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition-all duration-200"
                               title="Düzenle"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => removePiece(piece.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
+                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-lg transition-all duration-200"
                               title="Sil"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1175,135 +1304,212 @@ export default function FoamCutOptimizer() {
                     </div>
                   ))}
                   {pieces.length === 0 && (
-                    <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                      <Scissors className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                      <p>Henüz parça eklenmedi</p>
+                    <div className="text-center text-gray-500 py-12 border-2 border-dashed border-gray-200 rounded-2xl">
+                      <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">Henüz parça eklenmedi</p>
+                      <p className="text-sm mt-1">Yukarıdaki formu kullanarak parça ekleyin</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Calculate Button */}
-            <button
-              onClick={calculateOptimization}
-              disabled={pieces.length === 0 || isCalculating}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center mb-3"
-            >
-              {isCalculating ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Hesaplanıyor...
-                </>
-              ) : (
-                <>
-                  <Calculator className="w-5 h-5 mr-2" />
-                  Temel Optimizasyon
-                </>
-              )}
-            </button>
-
-            {/* Advanced Optimization Buttons */}
-            <div className="grid grid-cols-1 gap-3">
+            {/* Action Buttons - Mobile Optimized */}
+            <div className="space-y-4">
               <button
-                onClick={() => calculateAdvancedOptimization('adaptive')}
+                onClick={calculateOptimization}
                 disabled={pieces.length === 0 || isCalculating}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
               >
                 {isCalculating ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                     Hesaplanıyor...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 mr-2" />
+                    <Calculator className="w-5 h-5 mr-3" />
+                    Temel Optimizasyon
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={calculateRealisticCutting}
+                disabled={pieces.length === 0 || isCalculating}
+                className="w-full bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+              >
+                {isCalculating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Kesim hesaplanıyor...
+                  </>
+                ) : (
+                  <>
+                    <Scissors className="w-5 h-5 mr-3" />
+                    🔪 Gerçek Makine Kesimi
+                  </>
+                )}
+              </button>
+
+              {/* Advanced Buttons */}
+              <button
+                onClick={() => calculateAdvancedOptimization('adaptive')}
+                disabled={pieces.length === 0 || isCalculating}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+              >
+                {isCalculating && optimizationProgress.total === 1 ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    {optimizationProgress.currentAlgorithm || 'Hesaplanıyor...'}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-3" />
                     🎯 Akıllı Optimizasyon
                   </>
                 )}
               </button>
               
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => calculateAdvancedOptimization('multi')}
                   disabled={pieces.length === 0 || isCalculating}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center text-sm"
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-2xl flex items-center justify-center text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
                 >
-                  🏆 Multi-Algo
+                  {isCalculating && optimizationProgress.total === 3 && optimizationProgress.stage.includes('Multi') ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span className="text-xs">
+                        {optimizationProgress.completed}/{optimizationProgress.total}
+                      </span>
+                    </>
+                  ) : (
+                    '🏆 Multi-Algo'
+                  )}
                 </button>
                 
                 <button
                   onClick={() => calculateAdvancedOptimization('hybrid')}
                   disabled={pieces.length === 0 || isCalculating}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center text-sm"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-2xl flex items-center justify-center text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
                 >
-                  🔬 Hibrit
+                  {isCalculating && optimizationProgress.total === 3 && optimizationProgress.stage.includes('Hybrid') ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span className="text-xs">
+                        {optimizationProgress.completed}/{optimizationProgress.total}
+                      </span>
+                    </>
+                  ) : (
+                    '🔬 Hibrit'
+                  )}
                 </button>
               </div>
             </div>
+
+            {/* Progress Indicator - Mobile Optimized */}
+            {isCalculating && optimizationProgress.progress > 0 && (
+              <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                      <Brain className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">İşlem Durumu</span>
+                  </div>
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {optimizationProgress.completed}/{optimizationProgress.total}
+                  </span>
+                </div>
+                
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs text-gray-600 mb-2">
+                    <span className="truncate">{optimizationProgress.stage}</span>
+                    <span className="ml-2">{Math.round(optimizationProgress.progress)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${optimizationProgress.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                {optimizationProgress.currentAlgorithm && (
+                  <div className="flex items-center justify-center bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl py-3">
+                    <Zap className="w-4 h-4 text-blue-500 mr-2" />
+                    <span className="text-sm font-medium text-blue-700">
+                      {optimizationProgress.currentAlgorithm}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Results */}
-          <div className="space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             
-            {/* Stats */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-blue-600">{stats.totalPieces}</div>
-                <div className="text-sm text-gray-600 font-medium">Toplam Parça</div>
+              <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl p-4 sm:p-6 text-center shadow-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1">{stats.totalPieces}</div>
+                <div className="text-xs sm:text-sm text-gray-600 font-medium">Toplam Parça</div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-green-600">
+              <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl p-4 sm:p-6 text-center shadow-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-1">
                   {(stats.totalVolume / 1000).toFixed(1)}L
                 </div>
-                <div className="text-sm text-gray-600 font-medium">Toplam Hacim</div>
+                <div className="text-xs sm:text-sm text-gray-600 font-medium">Toplam Hacim</div>
               </div>
             </div>
 
             {/* Optimization Results */}
             {optimizationResult && (
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="border-b border-gray-100 px-6 py-4">
-                  <h2 className="font-semibold text-gray-900">Optimizasyon Sonuçları</h2>
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-4 sm:px-6 py-4">
+                  <h2 className="font-bold text-white text-lg">Optimizasyon Sonuçları</h2>
+                  <p className="text-emerald-100 text-sm mt-1">Hesaplama tamamlandı</p>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">{optimizationResult.layouts.length}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-1">{optimizationResult.layouts.length}</div>
                       <div className="text-xs text-gray-600 font-medium">Kullanılan Blok</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{optimizationResult.efficiency.toFixed(1)}%</div>
+                      <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">{optimizationResult.efficiency.toFixed(1)}%</div>
                       <div className="text-xs text-gray-600 font-medium">Verimlilik</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">{optimizationResult.totalWaste.toFixed(1)}%</div>
-                      <div className="text-xs text-gray-600 font-medium">İsraf</div>
+                      <div className="text-xl sm:text-2xl font-bold text-red-600 mb-1">{optimizationResult.totalWaste.toFixed(1)}%</div>
+                      <div className="text-xs text-gray-600 font-medium">Fire</div>
                     </div>
                   </div>
                   
-                  {/* İsraf Optimizasyonu Butonu */}
+                  {/* Waste Optimization */}
                   {optimizationResult.totalWaste > 5 && (
-                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center justify-between">
+                    <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div>
-                          <h4 className="font-medium text-yellow-800">İsraf Azaltılabilir</h4>
-                          <p className="text-sm text-yellow-600">Kalan parçalar daha küçük parçalara bölünebilir</p>
+                          <h4 className="font-medium text-yellow-800 text-sm">Fire Azaltılabilir</h4>
+                          <p className="text-xs text-yellow-600">Kalan parçalar daha küçük parçalara bölünebilir</p>
                         </div>
                         <button
                           onClick={optimizeWaste}
                           disabled={isCalculating}
-                          className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-400 text-white font-medium px-4 py-2 rounded-lg flex items-center text-sm"
+                          className="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-400 text-white font-medium px-4 py-2 rounded-xl flex items-center justify-center text-sm transition-all duration-200"
                         >
                           {isCalculating ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Hesaplanıyor...
+                              Hesaplıyor...
                             </>
                           ) : (
                             <>
                               <Scissors className="w-4 h-4 mr-2" />
-                              İsrafı Azalt
+                              Fireyi Azalt
                             </>
                           )}
                         </button>
@@ -1315,12 +1521,13 @@ export default function FoamCutOptimizer() {
             )}
 
             {/* 3D Visualization */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="border-b border-gray-100 px-6 py-4">
-                <h2 className="font-semibold text-gray-900">3D Görselleştirme</h2>
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-4 sm:px-6 py-4">
+                <h2 className="font-bold text-white text-lg">3D Görselleştirme</h2>
+                <p className="text-purple-100 text-sm mt-1">İnteraktif 3D model</p>
               </div>
-              <div className="p-6">
-                <div className="h-96 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-4 sm:p-6 lg:p-8">
+                <div className="min-h-64 sm:min-h-80 lg:min-h-96 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 overflow-hidden">
                   <FoamPiece3D 
                     pieces={pieces} 
                     stockFoams={stockFoams}
@@ -1333,78 +1540,78 @@ export default function FoamCutOptimizer() {
         </div>
       </div>
 
-      {/* Full Width 2D Views Section */}
+      {/* Full Width 2D Views Section - Mobile Responsive */}
       {optimizationResult && (
-        <div className="container mx-auto p-6">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
-              <Grid3X3 className="w-6 h-6 text-purple-500 mr-3" />
-              2D Kesit Görünümleri - Tüm Açılar
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="mb-6 lg:mb-8">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 flex items-center">
+              <Grid3X3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-500 mr-3" />
+              2D Kesit Görünümleri
             </h2>
-            <p className="text-gray-600">Her görünüm farklı açıdan kesilmiş parçaları gösterir</p>
+            <p className="text-sm sm:text-base text-gray-600">Her görünüm farklı açıdan kesilmiş parçaları gösterir</p>
           </div>
 
           {/* Yukarıdan Görünüm */}
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 shadow-lg">
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-4 rounded-t-xl">
-              <h3 className="text-xl font-bold text-white flex items-center">
+          <div className="mb-6 lg:mb-8 bg-white/70 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-white/20 shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-4 sm:px-6 py-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white flex items-center">
                 🔽 Yukarıdan Görünüm (X-Y Düzlemi)
               </h3>
-              <p className="text-blue-100 text-sm">Uzunluk × Genişlik boyutları görünür, kalınlık parçalarda gösterilir</p>
+              <p className="text-blue-100 text-xs sm:text-sm">Uzunluk × Genişlik boyutları görünür</p>
             </div>
-            <div className="p-8">
-              <div className="min-h-96 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="w-full bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl lg:rounded-2xl border border-gray-200 overflow-hidden">
                 <FoamCutSlice2D 
                   pieces={pieces} 
                   stockFoams={stockFoams}
                   optimizationResult={optimizationResult}
                   fixedView="top"
                   showTabs={false}
-                  scale={1.5}
+                  scale={0.6}
                 />
               </div>
             </div>
           </div>
 
           {/* Önden Görünüm */}
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 shadow-lg">
-            <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4 rounded-t-xl">
-              <h3 className="text-xl font-bold text-white flex items-center">
+          <div className="mb-6 lg:mb-8 bg-white/70 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-white/20 shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-4 sm:px-6 py-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white flex items-center">
                 ➡️ Önden Görünüm (X-Z Düzlemi)
               </h3>
-              <p className="text-emerald-100 text-sm">Uzunluk × Kalınlık boyutları görünür, derinlik parçalarda gösterilir</p>
+              <p className="text-emerald-100 text-xs sm:text-sm">Uzunluk × Kalınlık boyutları görünür</p>
             </div>
-            <div className="p-8">
-              <div className="min-h-96 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="w-full bg-gradient-to-br from-gray-50 to-green-50 rounded-xl lg:rounded-2xl border border-gray-200 overflow-hidden">
                 <FoamCutSlice2D 
                   pieces={pieces} 
                   stockFoams={stockFoams}
                   optimizationResult={optimizationResult}
                   fixedView="front"
                   showTabs={false}
-                  scale={1.5}
+                  scale={0.6}
                 />
               </div>
             </div>
           </div>
 
           {/* Yandan Görünüm */}
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 shadow-lg">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 rounded-t-xl">
-              <h3 className="text-xl font-bold text-white flex items-center">
+          <div className="mb-6 lg:mb-8 bg-white/70 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-white/20 shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-4 sm:px-6 py-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white flex items-center">
                 ⬅️ Yandan Görünüm (Y-Z Düzlemi)
               </h3>
-              <p className="text-purple-100 text-sm">Genişlik × Kalınlık boyutları görünür, derinlik parçalarda gösterilir</p>
+              <p className="text-purple-100 text-xs sm:text-sm">Genişlik × Kalınlık boyutları görünür</p>
             </div>
-            <div className="p-8">
-              <div className="min-h-96 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="w-full bg-gradient-to-br from-gray-50 to-purple-50 rounded-xl lg:rounded-2xl border border-gray-200 overflow-hidden">
                 <FoamCutSlice2D 
                   pieces={pieces} 
                   stockFoams={stockFoams}
                   optimizationResult={optimizationResult}
                   fixedView="side"
                   showTabs={false}
-                  scale={1.5}
+                  scale={0.6}
                 />
               </div>
             </div>
@@ -1412,35 +1619,108 @@ export default function FoamCutOptimizer() {
         </div>
       )}
 
-      {/* PDF Rapor Oluşturma */}
+      {/* PDF Report Section - Mobile Responsive */}
       {optimizationResult && (
-        <div className="container mx-auto p-6">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-8 text-center">
-            <div className="mb-4">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">📄 Detaylı Rapor</h3>
-              <p className="text-gray-600">Tüm optimizasyon sonuçlarını, malzeme listelerini ve kesim planlarını içeren kapsamlı PDF raporu oluşturun.</p>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-white/20 shadow-lg p-6 sm:p-8 text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              </div>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-3">📄 Detaylı Rapor</h3>
+              <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+                Tüm optimizasyon sonuçlarını, malzeme listelerini ve kesim planlarını içeren kapsamlı PDF raporu oluşturun.
+              </p>
             </div>
             <button
               onClick={generatePDFReport}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold px-8 py-4 rounded-xl flex items-center justify-center mx-auto transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-200/50"
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold px-6 sm:px-8 py-4 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-200/50 text-base sm:text-lg"
             >
-              <FileText className="w-6 h-6 mr-3" />
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
               PDF RAPORU OLUŞTUR
-              <Download className="w-5 h-5 ml-3" />
+              <Download className="w-4 h-4 sm:w-5 sm:h-5 ml-3" />
             </button>
-            <div className="mt-4 text-sm text-gray-500">
-              <p>• Ham malzeme listesi • Parça detayları • Optimizasyon sonuçları</p>
-              <p>• Pozisyon bilgileri • Verimlilik analizi • Kesim planları</p>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm text-gray-500">
+              <div className="space-y-1">
+                <p>• Ham malzeme listesi</p>
+                <p>• Parça detayları</p>
+                <p>• Optimizasyon sonuçları</p>
+              </div>
+              <div className="space-y-1">
+                <p>• Pozisyon bilgileri</p>
+                <p>• Verimlilik analizi</p>
+                <p>• Kesim planları</p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Algorithm Dashboard - Mobile Responsive */}
       {optimizationResult && optimizationResult.layouts.length > 0 && (
-        <div className="container mx-auto p-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <AlgorithmDashboard optimizationResult={optimizationResult} />
         </div>
       )}
+
+      {/* Cutting Instructions - Mobile Responsive */}
+      {optimizationResult && optimizationResult.cuttingInstructions && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <CuttingInstructions 
+            cuttingInstructions={optimizationResult.cuttingInstructions}
+            algorithmData={optimizationResult.algorithmData}
+          />
+        </div>
+      )}
+
+      {/* Footer - Mobile Responsive */}
+      <footer className="bg-gradient-to-r from-slate-800 to-blue-900 text-white mt-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start space-x-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center">
+                  <Package className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold">FoamCut Pro</span>
+              </div>
+              <p className="text-blue-200 text-sm leading-relaxed">
+                Gelişmiş AI algoritmalarıyla sünger kesim optimizasyonu. 
+                Minimum israf, maksimum verimlilik.
+              </p>
+            </div>
+            
+            <div className="text-center sm:text-left">
+              <h4 className="font-bold mb-4 text-blue-300">Özellikler</h4>
+              <ul className="space-y-2 text-sm text-blue-200">
+                <li>🎯 Akıllı Optimizasyon</li>
+                <li>🔪 Gerçek Makine Desteği</li>
+                <li>📊 Detaylı Raporlama</li>
+                <li>📱 Mobil Uyumlu</li>
+              </ul>
+            </div>
+            
+            <div className="text-center sm:text-left">
+              <h4 className="font-bold mb-4 text-blue-300">Teknoloji</h4>
+              <ul className="space-y-2 text-sm text-blue-200">
+                <li>⚡ Genetic Algorithm</li>
+                <li>🧠 Simulated Annealing</li>
+                <li>🎨 3D Visualization</li>
+                <li>📈 Real-time Analytics</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-blue-700/50 mt-8 pt-6 text-center">
+            <p className="text-blue-300 text-sm">
+              © 2024 FoamCut Optimizer v2.0 Pro - Tüm hakları saklıdır
+            </p>
+            <p className="text-blue-400 text-xs mt-2">
+              Powered by Next.js & Advanced AI Algorithms
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 } 

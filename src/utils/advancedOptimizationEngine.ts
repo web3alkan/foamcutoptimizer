@@ -28,15 +28,18 @@ interface AlgorithmResult {
   efficiency: number
   waste: number
   convergenceData?: any[]
+  error?: string
 }
 
 export class AdvancedOptimizationEngine {
   private pieces: FoamPiece[]
   private stockFoams: StockFoam[]
+  private progressCallback?: (progress: { algorithm: string, progress: number, stage: string }) => void
 
-  constructor(pieces: FoamPiece[], stockFoams: StockFoam[]) {
+  constructor(pieces: FoamPiece[], stockFoams: StockFoam[], progressCallback?: (progress: any) => void) {
     this.pieces = pieces
     this.stockFoams = stockFoams
+    this.progressCallback = progressCallback
   }
 
   async optimizeWithMultipleAlgorithms(algorithms: string[] = ['basic', 'genetic', 'annealing']): Promise<any> {
@@ -46,9 +49,20 @@ export class AdvancedOptimizationEngine {
     const results: AlgorithmResult[] = []
     const startTime = Date.now()
 
-    // Algoritmaları paralel çalıştır
-    const promises = algorithms.map(async (algorithm) => {
+    // Algoritmaları sırayla çalıştır (daha iyi progress tracking için)
+    for (let i = 0; i < algorithms.length; i++) {
+      const algorithm = algorithms[i]
       const algoStartTime = Date.now()
+      
+      // Progress bildir
+      if (this.progressCallback) {
+        this.progressCallback({
+          algorithm: algorithm === 'basic' ? '⚡ Temel' : 
+                    algorithm === 'genetic' ? '🧬 Genetik' : '🔥 Tavlama',
+          progress: (i / algorithms.length) * 100,
+          stage: `${algorithm} algoritması çalışıyor...`
+        })
+      }
       
       try {
         let result
@@ -84,40 +98,52 @@ export class AdvancedOptimizationEngine {
 
         const executionTime = Date.now() - algoStartTime
 
-        return {
+        results.push({
           name: algorithm,
           result,
           executionTime,
           efficiency: result.efficiency,
           waste: result.totalWaste,
           convergenceData
+        })
+
+        // İlerleme bildir
+        if (this.progressCallback) {
+          this.progressCallback({
+            algorithm: algorithm === 'basic' ? '⚡ Temel' : 
+                      algorithm === 'genetic' ? '🧬 Genetik' : '🔥 Tavlama',
+            progress: ((i + 1) / algorithms.length) * 100,
+            stage: `${algorithm} tamamlandı! (${result.efficiency.toFixed(1)}% verimlilik)`
+          })
         }
+
+        // Kısa bekleme süresi (UI güncellemesi için)
+        await new Promise(resolve => setTimeout(resolve, 200))
+
       } catch (error) {
         console.error(`❌ ${algorithm} algoritmasında hata:`, error)
-        return {
+        results.push({
           name: algorithm,
           result: null,
           executionTime: Date.now() - algoStartTime,
           efficiency: 0,
           waste: 100,
           error: (error as Error).message
-        }
+        })
       }
-    })
+    }
 
-    // Tüm algoritmaların tamamlanmasını bekle
-    const algorithmResults = await Promise.all(promises)
-    results.push(...algorithmResults.filter(r => r.result !== null))
-
+    // Sadece başarılı sonuçları al
+    const successfulResults = results.filter(r => r.result !== null)
     const totalTime = Date.now() - startTime
 
     // En iyi sonucu bul
-    const bestResult = results.reduce((best, current) => 
+    const bestResult = successfulResults.reduce((best, current) => 
       current.efficiency > best.efficiency ? current : best
     )
 
     // Sonuçları karşılaştır
-    const comparison = this.generateComparison(results)
+    const comparison = this.generateComparison(successfulResults)
 
     console.log('🏆 Multi-Algorithm Optimization tamamlandı!')
     console.log(`⏱️ Toplam süre: ${totalTime}ms`)
@@ -128,15 +154,15 @@ export class AdvancedOptimizationEngine {
       algorithmComparison: {
         totalExecutionTime: totalTime,
         bestAlgorithm: bestResult.name,
-        results: results.map(r => ({
+        results: successfulResults.map(r => ({
           name: r.name,
           efficiency: r.efficiency,
           waste: r.waste,
           executionTime: r.executionTime,
-          rank: results.sort((a, b) => b.efficiency - a.efficiency).findIndex(sorted => sorted.name === r.name) + 1
+          rank: successfulResults.sort((a, b) => b.efficiency - a.efficiency).findIndex(sorted => sorted.name === r.name) + 1
         })),
         comparison,
-        convergenceAnalysis: this.analyzeConvergence(results)
+        convergenceAnalysis: this.analyzeConvergence(successfulResults)
       }
     }
   }
@@ -146,6 +172,14 @@ export class AdvancedOptimizationEngine {
     
     // 1. Aşama: Hızlı başlangıç için Basic Algorithm
     console.log('⚡ 1. Aşama: Basic Algorithm ile hızlı başlangıç...')
+    if (this.progressCallback) {
+      this.progressCallback({
+        algorithm: '⚡ Temel Algoritma',
+        progress: 33,
+        stage: 'Aşama 1: Hızlı başlangıç...'
+      })
+    }
+    
     const basicEngine = new OptimizationEngine()
     const basicResult = await basicEngine.optimize(
       this.pieces.map(p => ({ ...p, length: p.length * 10, width: p.width * 10, height: p.height * 10 })),
@@ -154,11 +188,27 @@ export class AdvancedOptimizationEngine {
 
     // 2. Aşama: Genetic Algorithm ile iyileştirme
     console.log('🧬 2. Aşama: Genetic Algorithm ile iyileştirme...')
+    if (this.progressCallback) {
+      this.progressCallback({
+        algorithm: '🧬 Genetik Algoritma',
+        progress: 66,
+        stage: 'Aşama 2: Genetik iyileştirme...'
+      })
+    }
+    
     const geneticEngine = new GeneticAlgorithm(this.pieces, this.stockFoams)
     const geneticResult = await geneticEngine.optimize()
 
     // 3. Aşama: En iyi sonucu Simulated Annealing ile rafine etme
     console.log('🔥 3. Aşama: Simulated Annealing ile rafine etme...')
+    if (this.progressCallback) {
+      this.progressCallback({
+        algorithm: '🔥 Simulated Annealing',
+        progress: 100,
+        stage: 'Aşama 3: Son rafine etme...'
+      })
+    }
+    
     const annealingEngine = new SimulatedAnnealing(this.pieces, this.stockFoams)
     const annealingResult = await annealingEngine.optimize()
 

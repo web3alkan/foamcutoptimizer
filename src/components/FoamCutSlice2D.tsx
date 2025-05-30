@@ -119,25 +119,22 @@ export default function FoamCutSlice2D({
         return {
           width: stockFoam.length,
           height: stockFoam.width,
-          label1: `${stockFoam.length}cm`,
-          label2: `${stockFoam.width}cm`,
-          depthLabel: `Kalınlık: ${stockFoam.height}cm`
+          label1: `${stockFoam.length}`,
+          label2: `${stockFoam.width}`
         }
       case 'front': // Önden (X-Z düzlemi)
         return {
           width: stockFoam.length,
           height: stockFoam.height,
-          label1: `${stockFoam.length}cm`,
-          label2: `${stockFoam.height}cm`,
-          depthLabel: `Derinlik: ${stockFoam.width}cm`
+          label1: `${stockFoam.length}`,
+          label2: `${stockFoam.height}`
         }
       case 'side': // Yandan (Y-Z düzlemi)
         return {
           width: stockFoam.width,
           height: stockFoam.height,
-          label1: `${stockFoam.width}cm`,
-          label2: `${stockFoam.height}cm`,
-          depthLabel: `Derinlik: ${stockFoam.length}cm`
+          label1: `${stockFoam.width}`,
+          label2: `${stockFoam.height}`
         }
     }
   }
@@ -157,24 +154,21 @@ export default function FoamCutSlice2D({
           x: placedPiece.x,
           y: placedPiece.y,
           width: placedPiece.width,
-          height: placedPiece.height,
-          depthInfo: `${placedPiece.depth}cm`
+          height: placedPiece.height
         }
       case 'front': // Önden (X-Z düzlemi)
         return {
           x: placedPiece.x,
           y: placedPiece.z,
           width: placedPiece.width,
-          height: placedPiece.depth,
-          depthInfo: `${placedPiece.height}cm`
+          height: placedPiece.depth
         }
       case 'side': // Yandan (Y-Z düzlemi)
         return {
           x: placedPiece.y,
           y: placedPiece.z,
           width: placedPiece.height,
-          height: placedPiece.depth,
-          depthInfo: `${placedPiece.width}cm`
+          height: placedPiece.depth
         }
     }
   }
@@ -200,7 +194,13 @@ export default function FoamCutSlice2D({
     }
   }, [stockFoams, activeView])
 
-  const scale = customScale || Math.min(280 / maxDimensions.maxWidth, 180 / maxDimensions.maxHeight)
+  // Responsive scaling for better fit
+  const containerWidth = 1200
+  const scale = customScale || Math.min(
+    containerWidth / maxDimensions.maxWidth,
+    300 / maxDimensions.maxHeight,
+    1.2 // Maximum scale
+  )
 
   const viewTabs = [
     { key: 'top', label: 'Yukarıdan', subtitle: 'X-Y' },
@@ -209,10 +209,10 @@ export default function FoamCutSlice2D({
   ]
 
   return (
-    <div className="w-full h-full bg-white">
+    <div className="w-full bg-white">
       {/* Minimalist Tab Navigation */}
       {showTabs && (
-        <div className="border-b border-gray-200 mb-4">
+        <div className="border-b border-gray-200 mb-6">
           <div className="flex space-x-1">
             {viewTabs.map((tab) => (
               <button
@@ -235,28 +235,37 @@ export default function FoamCutSlice2D({
         </div>
       )}
 
-      {/* Slice Views */}
-      <div className="overflow-auto max-h-60">
-        <div className="flex flex-wrap gap-6 justify-center">
-          {sliceData.map((layout, index) => {
-            const viewDims = getViewDimensions(layout.stockFoam)
-            
-            return (
-              <div key={layout.stockId} className="text-center">
-                {/* Block Header */}
-                <div className="mb-3">
-                  <div className="text-sm font-semibold text-gray-900">Blok {index + 1}</div>
-                  <div className="text-xs text-gray-600">{layout.stockFoam.label}</div>
-                </div>
+      {/* Single Layout Display - Like the provided image */}
+      <div className="w-full">
+        {sliceData.map((layout, index) => {
+          const viewDims = getViewDimensions(layout.stockFoam)
+          const scaledWidth = viewDims.width * scale
+          const scaledHeight = viewDims.height * scale
+          
+          return (
+            <div key={layout.stockId} className="mb-8">
+              {/* Block Header */}
+              <div className="mb-4 text-center">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Blok {index + 1} - {layout.stockFoam.label}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Verimlilik: %{optimizationResult.layouts[index]?.utilization.toFixed(1)}
+                </p>
+              </div>
 
-                {/* Block Container */}
-                <div className="relative bg-white border border-gray-300 rounded-lg shadow-sm">
-                  <div className="p-4">
+              {/* Main View Container - Like the image */}
+              <div className="w-full overflow-hidden">
+                <div className="flex justify-center">
+                  <div className="relative inline-block">
+                    {/* Main Rectangle with Border */}
                     <div
-                      className="relative bg-amber-50 border-2 border-amber-200 rounded"
+                      className="relative bg-white border-2 border-gray-800"
                       style={{
-                        width: viewDims.width * scale,
-                        height: viewDims.height * scale,
+                        width: scaledWidth,
+                        height: scaledHeight,
+                        minWidth: '300px',
+                        minHeight: '150px'
                       }}
                     >
                       {/* Placed Pieces */}
@@ -266,53 +275,100 @@ export default function FoamCutSlice2D({
                         return (
                           <div
                             key={pieceIndex}
-                            className="absolute border border-gray-800 flex items-center justify-center text-white text-xs font-medium"
+                            className="absolute border border-gray-600 flex items-center justify-center text-white font-bold text-xs"
                             style={{
                               left: pieceViewData.x * scale,
                               top: pieceViewData.y * scale,
                               width: pieceViewData.width * scale,
                               height: pieceViewData.height * scale,
                               backgroundColor: placedPiece.piece.color || '#4F46E5',
+                              fontSize: Math.max(8, Math.min(12, pieceViewData.width * scale / 8)) + 'px'
                             }}
                           >
-                            <div className="text-center">
-                              <div className="font-bold">{placedPiece.piece.label}</div>
-                              <div className="opacity-90">{pieceViewData.depthInfo}</div>
+                            <div className="text-center leading-tight">
+                              <div>{placedPiece.piece.label}</div>
                             </div>
                           </div>
                         )
                       })}
-                      
-                      {/* Dimension Labels */}
-                      <div className="absolute -bottom-6 left-0 right-0 text-center">
-                        <span className="text-xs text-gray-600 bg-white px-2 py-1 rounded border">
-                          {viewDims.label1}
-                        </span>
-                      </div>
-                      <div className="absolute -left-6 top-0 bottom-0 flex items-center">
-                        <div className="transform -rotate-90">
-                          <span className="text-xs text-gray-600 bg-white px-2 py-1 rounded border whitespace-nowrap">
-                            {viewDims.label2}
-                          </span>
-                        </div>
-                      </div>
                     </div>
-                  </div>
 
-                  {/* Block Info */}
-                  <div className="border-t border-gray-200 px-4 py-2 bg-gray-50">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-700">{viewDims.depthLabel}</span>
-                      <span className="text-green-600 font-semibold">
-                        %{optimizationResult.layouts[index]?.utilization.toFixed(1)}
-                      </span>
+                    {/* Dimension Labels - Like in the image */}
+                    {/* Bottom dimension */}
+                    <div 
+                      className="absolute text-center text-sm font-bold text-red-600"
+                      style={{
+                        bottom: '-25px',
+                        left: '0',
+                        right: '0'
+                      }}
+                    >
+                      {viewDims.label1}
                     </div>
+
+                    {/* Right dimension */}
+                    <div 
+                      className="absolute text-sm font-bold text-red-600"
+                      style={{
+                        right: '-40px',
+                        top: '50%',
+                        transform: 'translateY(-50%) rotate(90deg)',
+                        transformOrigin: 'center'
+                      }}
+                    >
+                      {viewDims.label2}
+                    </div>
+
+                    {/* Grid lines for better visibility (optional) */}
+                    <svg 
+                      className="absolute top-0 left-0 pointer-events-none opacity-20"
+                      width={scaledWidth}
+                      height={scaledHeight}
+                    >
+                      {/* Vertical grid lines every 50cm */}
+                      {Array.from({ length: Math.floor(viewDims.width / 50) + 1 }, (_, i) => (
+                        <line
+                          key={`v-${i}`}
+                          x1={i * 50 * scale}
+                          y1={0}
+                          x2={i * 50 * scale}
+                          y2={scaledHeight}
+                          stroke="#ddd"
+                          strokeWidth="1"
+                        />
+                      ))}
+                      {/* Horizontal grid lines every 50cm */}
+                      {Array.from({ length: Math.floor(viewDims.height / 50) + 1 }, (_, i) => (
+                        <line
+                          key={`h-${i}`}
+                          x1={0}
+                          y1={i * 50 * scale}
+                          x2={scaledWidth}
+                          y2={i * 50 * scale}
+                          stroke="#ddd"
+                          strokeWidth="1"
+                        />
+                      ))}
+                    </svg>
                   </div>
                 </div>
               </div>
-            )
-          })}
-        </div>
+
+              {/* Block Info Below */}
+              <div className="mt-6 text-center">
+                <div className="inline-flex items-center space-x-4 text-sm text-gray-600">
+                  <span>Toplam Parça: {layout.placedPieces.length}</span>
+                  <span>•</span>
+                  <span>Boyutlar: {viewDims.label1} × {viewDims.label2} cm</span>
+                  <span>•</span>
+                  <span className="text-green-600 font-semibold">
+                    Verimlilik: %{optimizationResult.layouts[index]?.utilization.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Info */}
@@ -323,10 +379,11 @@ export default function FoamCutSlice2D({
               {activeView === 'top' ? 'Yukarıdan Bakış' : activeView === 'front' ? 'Önden Bakış' : 'Yandan Bakış'}
             </div>
             <div className="text-gray-600 space-y-1">
-              {activeView === 'top' && <div>• Uzunluk × Genişlik boyutları, kalınlık parçalarda gösterilir</div>}
-              {activeView === 'front' && <div>• Uzunlık × Kalınlık boyutları, derinlik parçalarda gösterilir</div>}
-              {activeView === 'side' && <div>• Genişlik × Kalınlık boyutları, derinlik parçalarda gösterilir</div>}
+              {activeView === 'top' && <div>• Uzunluk × Genişlik boyutları görünür</div>}
+              {activeView === 'front' && <div>• Uzunluk × Kalınlık boyutları görünür</div>}
+              {activeView === 'side' && <div>• Genişlik × Kalınlık boyutları görünür</div>}
               <div>• Her renkli alan bir parçayı temsil eder</div>
+              <div>• Boyutlar santimetre (cm) cinsindendir</div>
             </div>
           </div>
         </div>
