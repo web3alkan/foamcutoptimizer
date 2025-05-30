@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === 'production';
+const repoName = 'foamcutoptimizer'; // Define repository name
 
 const nextConfig: NextConfig = {
   ...(isProd && {
@@ -8,6 +9,8 @@ const nextConfig: NextConfig = {
     trailingSlash: true,
     skipTrailingSlashRedirect: true,
     distDir: 'docs',
+    basePath: `/${repoName}`,          // Add basePath
+    assetPrefix: `/${repoName}/`,     // Add assetPrefix (note the trailing slash)
   }),
   images: {
     unoptimized: true
