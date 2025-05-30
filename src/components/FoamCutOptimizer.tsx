@@ -403,7 +403,7 @@ export default function FoamCutOptimizer() {
     }
 
     // 2D kesit verilerini hazırla
-    const generate2DSliceHTML = (viewType: 'top' | 'front' | 'side', title: string, subtitle: string) => {
+    const generate2DSliceHTML = (viewType: 'top' | 'front' | 'side', title: string) => {
       // Tüm layouts için SVG oluştur
       const svgElements = optimizationResult.layouts.map((layout, index) => {
         const stock = stockFoams.find(s => s.id === layout.stockId)
@@ -725,15 +725,15 @@ export default function FoamCutOptimizer() {
 
         <!-- 2D Kesit Görünümleri -->
         <div class="page-break">
-          ${generate2DSliceHTML('top', '🔽 Yukarıdan Görünüm (X-Y Düzlemi)', 'Uzunluk × Genişlik boyutları görünür, kalınlık parçalarda gösterilir')}
+          ${generate2DSliceHTML('top', '🔽 Yukarıdan Görünüm (X-Y Düzlemi)')}
         </div>
 
         <div class="page-break">
-          ${generate2DSliceHTML('front', '➡️ Önden Görünüm (X-Z Düzlemi)', 'Uzunluk × Kalınlık boyutları görünür, derinlik parçalarda gösterilir')}
+          ${generate2DSliceHTML('front', '➡️ Önden Görünüm (X-Z Düzlemi)')}
         </div>
 
         <div class="page-break">
-          ${generate2DSliceHTML('side', '⬅️ Yandan Görünüm (Y-Z Düzlemi)', 'Genişlik × Kalınlık boyutları görünür, derinlik parçalarda gösterilir')}
+          ${generate2DSliceHTML('side', '⬅️ Yandan Görünüm (Y-Z Düzlemi)')}
         </div>
 
         <div class="section page-break">
