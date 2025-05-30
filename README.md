@@ -100,7 +100,3 @@ Kol Desteği: 300×200×100mm × 8 adet
 ## 📝 Lisans
 
 MIT License - Açık kaynak
-
----
-
-**Not**: Bu uygulama sade ve pratik kullanım için tasarlanmıştır. CutList Optimizer'dan ilham alınarak, özellikle sünger endüstrisi için optimize edilmiştir.
