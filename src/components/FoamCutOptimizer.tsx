@@ -5,6 +5,8 @@ import { Calculator, Plus, Trash2, Package, Scissors, Info, Grid3X3, Sparkles, T
 import FoamPiece3D from './FoamPiece3D'
 import FoamCutSlice2D from './FoamCutSlice2D'
 import OptimizationEngine from '../utils/optimizationEngine'
+import { AdvancedOptimizationEngine } from '../utils/advancedOptimizationEngine'
+import AlgorithmDashboard from './AlgorithmDashboard'
 
 interface FoamPiece {
   id: string
@@ -301,6 +303,41 @@ export default function FoamCutOptimizer() {
       setOptimizationResult(result)
     } catch (error) {
       console.error('Optimizasyon hatası:', error)
+    } finally {
+      setIsCalculating(false)
+    }
+  }
+
+  // Gelişmiş optimizasyon hesaplama
+  const calculateAdvancedOptimization = async (mode: 'multi' | 'hybrid' | 'adaptive' = 'adaptive') => {
+    if (pieces.length === 0) return
+    
+    setIsCalculating(true)
+    setShowEfficiencyWarning(`🚀 Gelişmiş optimizasyon (${mode}) başlıyor...`)
+    
+    try {
+      const engine = new AdvancedOptimizationEngine(pieces, stockFoams)
+      let result
+      
+      switch (mode) {
+        case 'multi':
+          result = await engine.optimizeWithMultipleAlgorithms(['basic', 'genetic', 'annealing'])
+          setShowEfficiencyWarning(`🏆 Multi-Algorithm: En iyi = ${result.algorithmComparison.bestAlgorithm}`)
+          break
+        case 'hybrid':
+          result = await engine.optimizeWithHybridApproach()
+          setShowEfficiencyWarning(`🔬 Hybrid: ${result.hybridAnalysis.improvement.toFixed(1)}% iyileştirme`)
+          break
+        case 'adaptive':
+          result = await engine.optimizeWithAdaptiveParameters()
+          setShowEfficiencyWarning(`🎯 Adaptive: Otomatik algoritma seçimi tamamlandı`)
+          break
+      }
+      
+      setOptimizationResult(result)
+    } catch (error) {
+      console.error('Gelişmiş optimizasyon hatası:', error)
+      setShowEfficiencyWarning('Gelişmiş optimizasyon sırasında hata oluştu: ' + (error as Error).message)
     } finally {
       setIsCalculating(false)
     }
@@ -1151,7 +1188,7 @@ export default function FoamCutOptimizer() {
             <button
               onClick={calculateOptimization}
               disabled={pieces.length === 0 || isCalculating}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center"
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center mb-3"
             >
               {isCalculating ? (
                 <>
@@ -1161,10 +1198,49 @@ export default function FoamCutOptimizer() {
               ) : (
                 <>
                   <Calculator className="w-5 h-5 mr-2" />
-                  Optimizasyonu Hesapla
+                  Temel Optimizasyon
                 </>
               )}
             </button>
+
+            {/* Advanced Optimization Buttons */}
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                onClick={() => calculateAdvancedOptimization('adaptive')}
+                disabled={pieces.length === 0 || isCalculating}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center"
+              >
+                {isCalculating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Hesaplanıyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    🎯 Akıllı Optimizasyon
+                  </>
+                )}
+              </button>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => calculateAdvancedOptimization('multi')}
+                  disabled={pieces.length === 0 || isCalculating}
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center text-sm"
+                >
+                  🏆 Multi-Algo
+                </button>
+                
+                <button
+                  onClick={() => calculateAdvancedOptimization('hybrid')}
+                  disabled={pieces.length === 0 || isCalculating}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center text-sm"
+                >
+                  🔬 Hibrit
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Right Panel - Results */}
@@ -1357,6 +1433,12 @@ export default function FoamCutOptimizer() {
               <p>• Pozisyon bilgileri • Verimlilik analizi • Kesim planları</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {optimizationResult && optimizationResult.layouts.length > 0 && (
+        <div className="container mx-auto p-6">
+          <AlgorithmDashboard optimizationResult={optimizationResult} />
         </div>
       )}
     </div>
